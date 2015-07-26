@@ -99,9 +99,9 @@ module Classifieds
         end
       end
       puts 'Encrypted:'.color(:green) unless encrypted_files.empty?
-      encrypted_files.each {|file| puts "\t" + file }
+      encrypted_files.each {|encrypted_file| puts "\t" + encrypted_file }
       puts 'Unencrypted:'.color(:red) unless unencrypted_files.empty?
-      unencrypted_files.each {|file| puts "\t" + file }
+      unencrypted_files.each {|unencrypted_file| puts "\t" + unencrypted_file }
     end
 
     private
