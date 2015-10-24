@@ -27,7 +27,7 @@ module Classifieds
 
     desc 'encrypt', 'Encrypt files which were described in .classifieds'
     def encrypt
-      @password ||= ask_password
+      @password = ask_password
       retype_password
 
       encrypted_files = classifieds.each_with_object([]) do |file_path, array|
@@ -57,7 +57,7 @@ module Classifieds
 
     desc 'decrypt', 'Decrypt files which were described in .classifieds'
     def decrypt
-      @password ||= ask_password
+      @password = ask_password
 
       decrypted_files = classifieds.each_with_object([]) do |file_path, array|
         next if decrypted?(file_path)
