@@ -12,6 +12,10 @@ module Classifieds
     using SafeColorize
 
     def initialize(*args)
+      unless File.exists?(SOURCE_FILE)
+        STDERR.puts "#{SOURCE_FILE} is not found".color(:red)
+        exit 1
+      end
       @prefix = Digest::SHA1.hexdigest('classifieds')
       super
     end
@@ -128,12 +132,7 @@ module Classifieds
     end
 
     def classifieds
-      File.open(SOURCE_FILE) do |f|
-        Parser.parse(f.read)
-      end
-    rescue Errno::ENOENT
-      STDERR.puts "#{SOURCE_FILE} is not found".color(:red)
-      exit 1
+      Parser.parse(File.read(SOURCE_FILE).chomp)
     end
 
     def encrypt_data(data)
