@@ -16,24 +16,42 @@ module Classifieds
         STDERR.puts "#{SOURCE_FILE} is not found".color(:red)
         exit 1
       end
+
+      FileUtils.mkdir_p(SOURCE_DIRECTORY) unless Dir.exists?(SOURCE_DIRECTORY)
       @prefix = Digest::SHA1.hexdigest('classifieds')
       super
     end
 
-    desc 'init', 'Initialize classifieds'
-    def init
-      if File.exists?(SOURCE_FILE)
-        puts 'Classifieds already initialized'.color(:red)
+    desc 'keygen', 'Generate identity files using by public key encryption'
+    option :force, type: :boolean, aliases: '-f'
+    def keygen
+      if !options[:force] && (File.exists?(PUBLIC_KEY_PATH) && File.exists?(COMMON_KEY_PATH))
+        STDERR.puts 'Already exists'.color(:red)
+        exit 1
       else
-        FileUtils.touch(SOURCE_FILE)
-        puts "#{SOURCE_FILE} was created".color(:green)
+        OpenSSL::Random.seed(File.read('/dev/random', 16))
+        rsa = OpenSSL::PKey::RSA.new(2048)
+        pub = rsa.public_key
+        File.open(PUBLIC_KEY_PATH, 'w') do |f|
+          f.puts pub.to_pem
+        end
+        File.open(COMMON_KEY_PATH, 'w') do |f|
+          f.puts pub.public_encrypt(OpenSSL::Random.random_bytes(16))
+        end
+        puts rsa
       end
     end
 
     desc 'encrypt', 'Encrypt files which were described in .classifieds'
+    option :identity_file, type: 'string', aliases: '-i'
     def encrypt
-      @password = ask_password
-      retype_password
+      if identity_file = options[:identity_file]
+        rsa = OpenSSL::PKey::RSA.new(File.read(identity_file).chomp)
+        @password = rsa.private_decrypt(File.read(COMMON_KEY_PATH).chomp)
+      else
+        @password = ask_password
+        retype_password
+      end
 
       encrypted_files = classifieds.each_with_object([]) do |file_path, array|
         next if encrypted?(file_path)
@@ -61,8 +79,14 @@ module Classifieds
     end
 
     desc 'decrypt', 'Decrypt files which were described in .classifieds'
+    option :identity_file, type: 'string', aliases: '-i'
     def decrypt
-      @password = ask_password
+      if identity_file = options[:identity_file]
+        rsa = OpenSSL::PKey::RSA.new(File.read(identity_file).chomp)
+        @password = rsa.private_decrypt(File.read(COMMON_KEY_PATH).chomp)
+      else
+        @password = ask_password
+      end
 
       decrypted_files = classifieds.each_with_object([]) do |file_path, array|
         next if decrypted?(file_path)

@@ -16,10 +16,16 @@ $ gem install classifieds
 
 ## Usage
 
-Initialize classifieds.
+Generate identity files using by public key encryption.
 
 ```
-$ classifieds init
+$ classifieds keygen
+```
+
+Show a status of the encryption of this repository.
+
+```
+$ classifieds status
 ```
 
 Encrypt files which were described in .classifieds.
@@ -32,12 +38,6 @@ Decrypt files which were described in .classifieds.
 
 ```
 $ classifieds decrypt
-```
-
-Show a status of the encryption of this repository.
-
-```
-$ classifieds status
 ```
 
 ## Example
@@ -60,8 +60,7 @@ In your repository:
 First, initialize classifieds.
 
 ```
-$ classifieds init
-.classifieds was created
+$ touch .classifieds
 
 $ ls -a
 .classifieds  bar/  foo  fuga/  hoge/
@@ -90,6 +89,8 @@ Unencrypted:
         /path/to/fuga/fuga2
 ```
 
+### Password Encryption
+
 Encrypt files.
 
 ```
@@ -116,7 +117,73 @@ Encrypted:
         /path/to/fuga/fuga2
 
 $ cat foo
-65c0ec273963aacc69af593b03d1710ff90f75da¢É¸¤°öaDJ³
+65c0ec273963aacc69af593b03d1710ff90f75daB5KyfrnkTXz/K6+SeNkapA==
+```
+
+Decrypt files.
+
+```
+$ classifieds decrypt
+Password:
+Decrypted:
+        /path/to/foo
+        /path/to/bar/bar2
+        /path/to/hoge/hoge1.rb
+        /path/to/fuga/fuga1
+        /path/to/fuga/fuga2
+```
+
+Check the status.
+
+```
+$ classifieds status
+Unencrypted:
+        /path/to/foo
+        /path/to/bar/bar2
+        /path/to/hoge/hoge1.rb
+        /path/to/fuga/fuga1
+        /path/to/fuga/fuga2
+
+$ cat foo
+foo
+```
+
+### Public Key Encryption
+
+Generate keys.
+
+```
+$ classifieds keygen > ~/classifieds_private_key
+$ ls .classifieds.d/*
+.classifieds.d/common_key
+.classifieds.d/public_key
+```
+
+Encrypt files.
+
+```
+$ classifieds encrypt -i ~/classifieds_private_key
+Encrypted:
+        /path/to/foo
+        /path/to/bar/bar2
+        /path/to/hoge/hoge1.rb
+        /path/to/fuga/fuga1
+        /path/to/fuga/fuga2
+```
+
+Check the status.
+
+```
+$ classifieds status
+Encrypted:
+        /path/to/foo
+        /path/to/bar/bar2
+        /path/to/hoge/hoge1.rb
+        /path/to/fuga/fuga1
+        /path/to/fuga/fuga2
+
+$ cat foo
+65c0ec273963aacc69af593b03d1710ff90f75daB5KyfrnkTXz/K6+SeNkapA==
 ```
 
 Decrypt files.
