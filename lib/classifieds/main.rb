@@ -1,5 +1,6 @@
 require 'digest/sha1'
 require 'openssl'
+require 'base64'
 require 'fileutils'
 
 require 'safe_colorize'
@@ -138,15 +139,29 @@ module Classifieds
     def encrypt_data(data)
       cipher = OpenSSL::Cipher.new('AES-256-CBC')
       cipher.encrypt
-      cipher.pkcs5_keyivgen(@password)
-      cipher.update(data) + cipher.final
+      key_iv = OpenSSL::PKCS5.pbkdf2_hmac_sha1(
+        @password,
+        File.expand_path(File.dirname(__FILE__)).split('/').pop,
+        1000,
+        cipher.key_len + cipher.iv_len
+      )
+      cipher.key = key_iv[0, cipher.key_len]
+      cipher.iv = key_iv[cipher.key_len, cipher.iv_len]
+      Base64.encode64(cipher.update(data) + cipher.final)
     end
 
     def decrypt_data(data)
       cipher = OpenSSL::Cipher.new('AES-256-CBC')
       cipher.decrypt
-      cipher.pkcs5_keyivgen(@password)
-      cipher.update(data) + cipher.final
+      key_iv = OpenSSL::PKCS5.pbkdf2_hmac_sha1(
+        @password,
+        File.expand_path(File.dirname(__FILE__)).split('/').pop,
+        1000,
+        cipher.key_len + cipher.iv_len
+      )
+      cipher.key = key_iv[0, cipher.key_len]
+      cipher.iv = key_iv[cipher.key_len, cipher.iv_len]
+      cipher.update(Base64.decode64(data)) + cipher.final
     end
 
     def encrypted?(file)
