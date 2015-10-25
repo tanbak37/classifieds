@@ -13,7 +13,7 @@ module Classifieds
 
     def initialize(*args)
       unless File.exists?(SOURCE_FILE)
-        STDERR.puts "#{SOURCE_FILE} is not found".color(:red)
+        STDERR.puts "#{SOURCE_FILE} is not found in this repository".color(:red)
         exit 1
       end
 
@@ -26,7 +26,7 @@ module Classifieds
     option :force, type: :boolean, aliases: '-f'
     def keygen
       if !options[:force] && (File.exists?(PUBLIC_KEY_PATH) && File.exists?(COMMON_KEY_PATH))
-        STDERR.puts 'Already exists'.color(:red)
+        STDERR.puts 'Already generated in this repository'.color(:red)
         exit 1
       else
         OpenSSL::Random.seed(File.read('/dev/random', 16))
@@ -88,6 +88,7 @@ module Classifieds
         @password = ask_password
       end
 
+      failed_files = []
       decrypted_files = classifieds.each_with_object([]) do |file_path, array|
         next if decrypted?(file_path)
 
@@ -100,7 +101,7 @@ module Classifieds
         begin
           decrypted = decrypt_data(data)
         rescue OpenSSL::Cipher::CipherError
-          STDERR.puts 'The entered password is wrong: '.color(:red) + file_path
+          failed_files << file_path
           next
         end
 
@@ -113,6 +114,8 @@ module Classifieds
 
       puts 'Decrypted:'.color(:green) unless decrypted_files.empty?
       decrypted_files.each {|decrypted_file| puts "\t" + decrypted_file }
+      puts 'Failed to decrypt:'.color(:red) unless failed_files.empty?
+      failed_files.each {|failed_file| puts "\t" + failed_file }
     end
 
     desc 'status', 'Show a status of the encryption of this repository'
