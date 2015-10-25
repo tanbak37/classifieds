@@ -2,6 +2,7 @@ require 'digest/sha1'
 require 'openssl'
 require 'base64'
 require 'fileutils'
+require 'find'
 
 require 'safe_colorize'
 
@@ -12,12 +13,13 @@ module Classifieds
     using SafeColorize
 
     def initialize(*args)
-      unless File.exists?(SOURCE_FILE)
+      unless classifieds?
         STDERR.puts "#{SOURCE_FILE} is not found in this repository".color(:red)
         exit 1
       end
 
-      FileUtils.mkdir_p(SOURCE_DIRECTORY) unless Dir.exists?(SOURCE_DIRECTORY)
+      source_directory = File.join(root_directory, SOURCE_DIRECTORY)
+      FileUtils.mkdir_p(source_directory) unless Dir.exists?(source_directory)
       @prefix = Digest::SHA1.hexdigest('classifieds')
       super
     end
@@ -25,17 +27,17 @@ module Classifieds
     desc 'keygen', 'Generate identity files using by public key encryption'
     option :force, type: :boolean, aliases: '-f'
     def keygen
-      if !options[:force] && (File.exists?(PUBLIC_KEY_PATH) && File.exists?(COMMON_KEY_PATH))
+      if !options[:force] && keygenerated?
         STDERR.puts 'Already generated in this repository'.color(:red)
         exit 1
       else
         OpenSSL::Random.seed(File.read('/dev/random', 16))
         rsa = OpenSSL::PKey::RSA.new(2048)
         pub = rsa.public_key
-        File.open(PUBLIC_KEY_PATH, 'w') do |f|
+        File.open(File.join(root_directory, PUBLIC_KEY_PATH), 'w') do |f|
           f.puts pub.to_pem
         end
-        File.open(COMMON_KEY_PATH, 'w') do |f|
+        File.open(File.join(root_directory, COMMON_KEY_PATH), 'w') do |f|
           f.puts pub.public_encrypt(OpenSSL::Random.random_bytes(16))
         end
         puts rsa
@@ -47,7 +49,7 @@ module Classifieds
     def encrypt
       if identity_file = options[:identity_file]
         rsa = OpenSSL::PKey::RSA.new(File.read(identity_file).chomp)
-        @password = rsa.private_decrypt(File.read(COMMON_KEY_PATH).chomp)
+        @password = rsa.private_decrypt(File.read(File.join(root_directory, COMMON_KEY_PATH)).chomp)
       else
         @password = ask_password
         retype_password
@@ -83,7 +85,7 @@ module Classifieds
     def decrypt
       if identity_file = options[:identity_file]
         rsa = OpenSSL::PKey::RSA.new(File.read(identity_file).chomp)
-        @password = rsa.private_decrypt(File.read(COMMON_KEY_PATH).chomp)
+        @password = rsa.private_decrypt(File.read(File.join(root_directory, COMMON_KEY_PATH)).chomp)
       else
         @password = ask_password
       end
@@ -159,7 +161,7 @@ module Classifieds
     end
 
     def classifieds
-      Parser.parse(File.read(SOURCE_FILE).chomp)
+      Parser.parse(File.read(File.join(root_directory, SOURCE_FILE)).chomp)
     end
 
     def encrypt_data(data)
@@ -167,7 +169,7 @@ module Classifieds
       cipher.encrypt
       key_iv = OpenSSL::PKCS5.pbkdf2_hmac_sha1(
         @password,
-        File.expand_path(File.dirname(__FILE__)).split('/').pop,
+        root_directory.split('/').pop,
         1000,
         cipher.key_len + cipher.iv_len
       )
@@ -181,13 +183,37 @@ module Classifieds
       cipher.decrypt
       key_iv = OpenSSL::PKCS5.pbkdf2_hmac_sha1(
         @password,
-        File.expand_path(File.dirname(__FILE__)).split('/').pop,
+        root_directory.split('/').pop,
         1000,
         cipher.key_len + cipher.iv_len
       )
       cipher.key = key_iv[0, cipher.key_len]
       cipher.iv = key_iv[cipher.key_len, cipher.iv_len]
       cipher.update(Base64.decode64(data)) + cipher.final
+    end
+
+    def root_directory
+      @root_directory ||=
+        begin
+          target_directory = File.expand_path(Dir.pwd)
+          until target_directory == '/' do
+            Find.find(target_directory) do |path|
+              Find.prune if path =~ %r|^#{target_directory}/|
+              return target_directory if path =~ /#{SOURCE_FILE}$/
+            end
+            target_directory = File.expand_path('..', target_directory)
+          end
+
+          nil
+        end
+    end
+
+    def classifieds?
+      !!root_directory
+    end
+
+    def keygenerated?
+      File.exists?(File.join(root_directory, PUBLIC_KEY_PATH)) && File.exists?(File.join(root_directory, COMMON_KEY_PATH))
     end
 
     def encrypted?(file)
