@@ -60,7 +60,6 @@ module Classifieds
 
         file = File.open(file_path, 'r+')
         file.flock(File::LOCK_EX)
-
         data = file.read.chomp
 
         begin
@@ -96,7 +95,6 @@ module Classifieds
 
         file = File.open(file_path, 'r+')
         file.flock(File::LOCK_EX)
-
         file.read(@prefix.size)
         data = file.read.chomp
 
@@ -165,31 +163,13 @@ module Classifieds
     end
 
     def encrypt_data(data)
-      cipher = OpenSSL::Cipher.new('AES-256-CBC')
-      cipher.encrypt
-      key_iv = OpenSSL::PKCS5.pbkdf2_hmac_sha1(
-        @password,
-        root_directory.split('/').pop,
-        1000,
-        cipher.key_len + cipher.iv_len
-      )
-      cipher.key = key_iv[0, cipher.key_len]
-      cipher.iv = key_iv[cipher.key_len, cipher.iv_len]
-      Base64.encode64(cipher.update(data) + cipher.final)
+      encryptor = Encryptor.new(@password, root_directory.split('/').pop)
+      encryptor.encrypt(data)
     end
 
     def decrypt_data(data)
-      cipher = OpenSSL::Cipher.new('AES-256-CBC')
-      cipher.decrypt
-      key_iv = OpenSSL::PKCS5.pbkdf2_hmac_sha1(
-        @password,
-        root_directory.split('/').pop,
-        1000,
-        cipher.key_len + cipher.iv_len
-      )
-      cipher.key = key_iv[0, cipher.key_len]
-      cipher.iv = key_iv[cipher.key_len, cipher.iv_len]
-      cipher.update(Base64.decode64(data)) + cipher.final
+      encryptor = Encryptor.new(@password, root_directory.split('/').pop)
+      encryptor.decrypt(data)
     end
 
     def root_directory

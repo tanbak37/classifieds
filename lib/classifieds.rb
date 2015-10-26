@@ -1,5 +1,6 @@
 require 'classifieds/exception'
 require 'classifieds/parser'
+require 'classifieds/encryptor'
 require 'classifieds/main'
 
 module Classifieds
