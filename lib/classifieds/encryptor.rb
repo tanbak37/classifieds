@@ -1,3 +1,6 @@
+require 'openssl'
+require 'base64'
+
 module Classifieds
   class Encryptor
     def initialize(password, salt)

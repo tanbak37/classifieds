@@ -1,6 +1,4 @@
 require 'digest/sha1'
-require 'openssl'
-require 'base64'
 require 'fileutils'
 
 require 'safe_colorize'
