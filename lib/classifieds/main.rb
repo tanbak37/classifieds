@@ -178,8 +178,8 @@ module Classifieds
           target_directory = File.expand_path(Dir.pwd)
           until target_directory == '/' do
             Find.find(target_directory) do |path|
+              return target_directory if path =~ /#{Regexp.escape(SOURCE_FILE)}$/
               Find.prune if path =~ %r|^#{target_directory}/|
-              return target_directory if path =~ /#{SOURCE_FILE}$/
             end
             target_directory = File.expand_path('..', target_directory)
           end
